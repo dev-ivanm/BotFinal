@@ -87,12 +87,24 @@ def save_group_content(group_name, content):
                              f"Error al guardar {group_name}.json: {e}")
         return False
 
+# Función de carga (Asumiendo que usa json.load)
 def load_accounts_data():
-    """Carga los datos de cuentas.json para la tabla."""
+    if not os.path.exists(CUENTAS_PATH):
+        return []
     try:
-        # Usamos la función del core para cargar
-        return cargar_cuentas()
-    except Exception:
+        with open(CUENTAS_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            
+            # 💡 CORRECCIÓN CLAVE: Desanidar la lista
+            # Si el JSON es [[cuenta1, cuenta2, ...]], extraemos la lista interna
+            if isinstance(data, list) and len(data) == 1 and isinstance(data[0], list):
+                return data[0]
+                
+            # Si el formato es correcto ([cuenta1, cuenta2, ...]), lo devolvemos tal cual
+            return data
+
+    except Exception as e:
+        messagebox.showerror("Error de Carga", f"Error al cargar {CUENTAS_PATH}: {e}")
         return []
 
 
@@ -152,7 +164,7 @@ def save_group_data(group_name, posts):
 
 
 class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más limpio de ttkbootstrap
-    def __init__(self, master=None):
+    def __init__(self, master):
         super().__init__(master)
         self.master = master
         master.title("🤖 Threads Poster Bot")
@@ -193,7 +205,7 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
         # 💡 FIX 2/3: Iniciar el refresco periódico de la GUI (árboles)
         self.periodic_refresh()
-
+        
     # --- Pestaña 1: Control ---
     def create_control_tab(self):
         control_frame = ttb.Frame(self.notebook, padding=10)
@@ -477,7 +489,9 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
                 return
 
             # Llama a la función del core para actualizar la configuración
-            update_delay_config(min_val, max_val)
+            use_individual = self.use_individual_delays_var.get()
+            
+            update_delay_config(min_val, max_val, use_individual)
 
             # Accedemos a la variable global DELAY_CONFIG para mostrar los valores corregidos
             final_min = DELAY_CONFIG['min_minutes']
@@ -770,18 +784,22 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         # Solo refrescamos los árboles para la pestaña actual
         current_tab_name = self.notebook.tab(self.notebook.select(), "text")
 
-        if current_tab_name in ["Cuentas", "Control"]:
-            self.update_account_tree()
+        # if current_tab_name in ["Cuentas", "Control"]:
+        #     self.update_account_tree()
 
-        if current_tab_name == "Cuarentena":
-            self.update_quarantine_tree()
+        # if current_tab_name == "Cuarentena":
+        #     self.update_quarantine_tree()
 
-        if current_tab_name == "Diagnóstico":
-            self.update_fallos_tree()
+        # if current_tab_name == "Diagnóstico":
+        #     self.update_fallos_tree()
+        
+        self.update_account_tree()     
+        self.update_quarantine_tree() 
+        self.update_fallos_tree()
 
-        # Reprogramar el refresco cada 5 segundos (5000 ms)
+        # Reprogramar el refresco cada 3 segundos (3000 ms)
         self.periodic_refresh_id = self.master.after(
-            5000, self.periodic_refresh)
+            3000, self.periodic_refresh)
 
     def on_closing(self):
         """Maneja el cierre de la ventana, asegurando la detención del bot."""
@@ -828,6 +846,11 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
         # 4. Insertar cada cuenta en la tabla
         for cuenta in cuentas:
+            if not isinstance(cuenta, dict):
+            # Imprimir una advertencia y saltar el elemento incorrecto
+                print(f"Advertencia: Se saltó un elemento de cuenta no válido (no es un diccionario): {cuenta}")
+                continue # Pasa al siguiente elemento del bucle
+            
             nombre = cuenta.get('nombre', 'N/A')
             grupo = cuenta.get('grupo', 'N/A')
             proxy = cuenta.get('proxy', 'N/A')
@@ -877,8 +900,15 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
             self.quarantine_tree.delete(i)
 
         all_accounts = load_accounts_data()
-        quarantined_accounts = [acc for acc in all_accounts if acc.get(
-            'estado', 'alive') in ('quarantine', 'require_login')]
+        quarantined_accounts = [
+    # Solo incluye la cuenta si ES un diccionario Y su estado cumple la condición
+    acc for acc in all_accounts
+    if isinstance(acc, dict) and (
+        acc.get('estado', 'alive') == 'quarantine' or 
+        acc.get('estado') == 'bloqueo' or 
+        acc.get('estado') == 'require_login'
+    )
+]
 
         if not quarantined_accounts:
             self.quarantine_tree.insert('', tk.END, values=(

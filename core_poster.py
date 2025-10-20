@@ -116,6 +116,7 @@ FALLOS_PATH = "fallos.json"
 FALLOS_EN_MEMORIA = []
 FALLOS_LOCK = threading.Lock() # Lock para acceso thread-safe a FALLOS_EN_MEMORIA
 CUENTAS_LOCK = threading.Lock() # Lock para acceso thread-safe a cuentas.json
+GRUPOS_DIR = "grupos"
 
 if not os.path.exists(FALLOS_PATH):
     with open(FALLOS_PATH, "w", encoding="utf-8") as f:
@@ -125,6 +126,21 @@ if not os.path.exists(CUENTAS_PATH):
     with open(CUENTAS_PATH, "w", encoding="utf-8") as f:
         json.dump([], f, indent=2)
 
+     
+def load_group_posts(group_name):
+    """Carga todos los posts de un grupo."""
+    file_path = os.path.join(GRUPOS_DIR, f"{group_name}.json")
+    if not os.path.exists(file_path):
+        print(f"⚠️ Archivo de grupo no encontrado: {file_path}")
+        return []
+    try:
+        with open(file_path, "r", encoding='utf-8') as f:
+            # Asumo que el archivo de grupo es una lista plana de posts (diccionarios)
+            posts = json.load(f)
+            return posts
+    except Exception as e:
+        print(f"❌ Error al cargar el grupo {group_name}: {e}")
+        return []
 
 def cargar_json(path):
     """Carga datos de un archivo JSON de forma segura."""
@@ -249,25 +265,31 @@ def guardar_fallos_periodicamente():
     global FALLOS_EN_MEMORIA, FALLOS_LOCK
     
     while get_running_status(): 
-        if not interruptible_sleep(180): # Espera 3 minutos (180s) de forma interrumpible
+        # Espera 3 minutos (180s) de forma interrumpible
+        if not interruptible_sleep(180): 
             break 
             
         with FALLOS_LOCK:
             if FALLOS_EN_MEMORIA:
                 fallos_existentes = [] 
                 
+                # 1. Intentar cargar los fallos existentes
                 if os.path.exists(FALLOS_PATH):
                     try:
                         with open(FALLOS_PATH, "r", encoding='utf-8') as f:
                             fallos_existentes = json.load(f)
                     except json.JSONDecodeError:
+                        # Si el archivo está corrupto (ej. un JSON inválido), se ignora su contenido.
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ Advertencia: fallos.json corrupto. Los fallos anteriores se han perdido.")
                     except Exception as e:
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 ERROR desconocido al cargar fallos.json: {e}")
 
+                # 2. Extender con los fallos que están en memoria
                 fallos_existentes.extend(FALLOS_EN_MEMORIA)
+                # 3. Limpiar la memoria (esto debe hacerse DENTRO del lock)
                 FALLOS_EN_MEMORIA.clear()
 
+                # 4. Guardar la lista combinada
                 try:
                     with open(FALLOS_PATH, "w", encoding='utf-8') as f:
                         json.dump(fallos_existentes, f,
@@ -369,7 +391,45 @@ def publicar_texto(cuenta, post, post_index):
             agregar_fallo_en_memoria(nombre, post_index, error_msg)
             return False, error_msg, "block"
 
+        # 🟢 VERIFICACIÓN ROBUSTA: Si es 200 OK, debemos validar el contenido JSON
         if res.ok:
+            try:
+                data = res.json()
+            except json.JSONDecodeError:
+                error_msg = f"ERROR API (200, No JSON): Respuesta no es JSON. Cuerpo: {res.text[:150]}"
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (200, No JSON): {error_msg}. Poniendo en cuarentena a {nombre}.")
+                marcar_cuarentena(nombre, error_msg)
+                agregar_fallo_en_memoria(nombre, post_index, error_msg)
+                return False, error_msg, "quarantine"
+
+            # 1. Detectar Fallo explícito en el JSON (típico de baneo/rechazo)
+            if data.get('status') == 'fail':
+                feedback_msg = data.get('feedback_message', data.get('message', 'Fallo interno de la API.'))
+                error_msg = f"BLOQUEO/FALLO API (status: fail): {feedback_msg[:100]}"
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (API Fail): {error_msg}. Poniendo en cuarentena a {nombre}.")
+                marcar_cuarentena(nombre, error_msg)
+                agregar_fallo_en_memoria(nombre, post_index, error_msg)
+                return False, error_msg, "quarantine"
+
+            # 2. Detectar Bloqueo por Acción Específica
+            if data.get('feedback_title') == 'Action Blocked':
+                feedback_msg = data.get('feedback_message', 'Acción bloqueada por Threads.')
+                error_msg = f"BLOQUEO CRÍTICO (Action Blocked): {feedback_msg[:100]}"
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 BLOQUEO CRÍTICO (Action Blocked): {error_msg}. Bloqueando a {nombre}.")
+                marcar_cuarentena(nombre, error_msg) 
+                agregar_fallo_en_memoria(nombre, post_index, error_msg)
+                return False, error_msg, "block" 
+            
+            # 3. VERIFICACIÓN CRÍTICA CONTRA FALLO SILENCIOSO (Problema elena457)
+            # En un éxito verdadero, debe existir la clave 'media' y el 'pk' del post.
+            if 'media' not in data or 'pk' not in data['media']:
+                error_msg = f"FALLO SILENCIOSO (200 OK, Sin Media): No se encontró la clave de publicación exitosa 'media'/'pk' en la respuesta JSON."
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (Post No Confirmado): {error_msg}. Poniendo en cuarentena a {nombre}.")
+                marcar_cuarentena(nombre, error_msg)
+                agregar_fallo_en_memoria(nombre, post_index, error_msg)
+                return False, error_msg, "quarantine"
+
+            # Si pasa todas las verificaciones, el post es un éxito verdadero.
             return True, "", "success"
         else:
             # Lógica de CUARENTENA por API (400, 403, etc.)
@@ -379,35 +439,34 @@ def publicar_texto(cuenta, post, post_index):
             agregar_fallo_en_memoria(nombre, post_index, error_msg)
             return False, error_msg, "quarantine"
 
-    # Cuarentena Inmediata para Errores Críticos de Conexión
+    # Cuarentena Inmediata para Errores Críticos de Conexión (sin cambios, ya era robusto)
     except requests.exceptions.ProxyError as e:
         error_msg = f"ERROR PROXY CAÍDO/MALO: {str(e)[:150]}"
-        if "Max retries exceeded with url" in str(e):
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (Proxy): Max Retries.")
-            marcar_cuarentena(nombre, error_msg)
-            agregar_fallo_en_memoria(nombre, post_index, error_msg)
-            return False, error_msg, "quarantine"
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (Proxy): El proxy ha fallado. Poniendo en cuarentena a {nombre}.")
+        marcar_cuarentena(nombre, error_msg)
         agregar_fallo_en_memoria(nombre, post_index, error_msg)
-        return False, error_msg, "retry"
+        return False, error_msg, "quarantine"
 
     except requests.exceptions.SSLError as e:
         error_msg = f"ERROR CONEXIÓN SSL: {str(e)[:150]}"
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (SSL): Falló SSL/TLS.")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (SSL): Falló SSL/TLS. Poniendo en cuarentena a {nombre}.")
         marcar_cuarentena(nombre, error_msg)
         agregar_fallo_en_memoria(nombre, post_index, error_msg)
         return False, error_msg, "quarantine"
 
     except requests.exceptions.ConnectionError as e:
         error_msg = f"ERROR DE CONEXIÓN (General): {str(e)[:150]}"
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (Conexión): Fallo de conexión general.")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (Conexión): Fallo de conexión general. Poniendo en cuarentena a {nombre}.")
         marcar_cuarentena(nombre, error_msg)
         agregar_fallo_en_memoria(nombre, post_index, error_msg)
         return False, error_msg, "quarantine"
         
     except Exception as e:
         error_msg = f"ERROR GENERAL: {str(e)[:150]}"
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚨 CUARENTENA CRÍTICA (General): Error inesperado. Poniendo en cuarentena a {nombre}.")
+        marcar_cuarentena(nombre, error_msg)
         agregar_fallo_en_memoria(nombre, post_index, error_msg)
-        return False, error_msg, "retry"
+        return False, error_msg, "quarantine"
 
 
 def publicar_con_imagen(cuenta, post, post_index):
@@ -674,7 +733,7 @@ def get_human_delay_cycle(grupo_nombre):
 
 
 def procesar_cuenta(cuenta):
-    """Función que gestiona la publicación de una sola cuenta en un hilo con ciclo de delay."""
+    """Función que gestiona la publicación de una sola cuenta en un hilo con ciclo de delay (ahora random)."""
     if not get_running_status():
         return
 
@@ -689,28 +748,31 @@ def procesar_cuenta(cuenta):
             f"⚠️ Grupo '{grupo_nombre}' de la cuenta {nombre_cuenta} no encontrado o vacío en la ruta: {grupo_path}")
         return
 
-    pending_posts = list(all_posts)
-    
-    # Se elimina el generador, el delay se calcula por post.
-    # delay_cycle = get_human_delay_cycle(grupo_nombre) 
+    # 💡 CAMBIO CLAVE: Esta lista solo guardará posts que fallaron y deben reintentarse.
+    # La selección normal se hará al azar desde 'all_posts'.
+    posts_para_reintentar = [] 
 
     try:
         while get_running_status(): 
-            if not pending_posts:
-                print(
-                    f"\n🔄 Grupo {grupo_nombre} de {nombre_cuenta} completó un ciclo. Reiniciando la lista de posts.")
-                pending_posts = list(all_posts)
-                if not pending_posts:
-                    print(
-                        f"⚠️ La lista de posts sigue vacía. Deteniendo {nombre_cuenta}.")
-                    break
+            
+            current_post = None
 
-            current_post = pending_posts.pop(0)
-
+            if posts_para_reintentar:
+                # Prioridad 1: Si hay posts fallidos, reintentar el primero de la cola.
+                current_post = posts_para_reintentar.pop(0)
+                print(f"\n🔄 Cuenta: {nombre_cuenta} - Reintentando post fallido...")
+            else:
+                # Prioridad 2: Seleccionar un post AL AZAR del grupo completo.
+                current_post = random.choice(all_posts)
+                
+            # (El resto del código del post_selection original se elimina)
+            
+            # --- Encuentra el índice original (solo para logging) ---
             try:
-                original_index = all_posts.index(current_post)
+                # Necesitamos un índice para agregar el fallo al archivo FALLOS_PATH
+                original_index = all_posts.index(current_post) 
             except ValueError:
-                original_index = -1
+                original_index = -1 
 
             print(
                 f"\n➡️ Cuenta: {nombre_cuenta} - Publicando post ID original #{original_index + 1}...")
@@ -719,8 +781,9 @@ def procesar_cuenta(cuenta):
             error_detalle = "Error desconocido."
             action = "retry"
 
+            # --- Lógica de Determinación de Tipo de Post (La dejamos igual) ---
             try:
-                # --- Lógica de Determinación de Tipo de Post ---
+                # Aseguramos que current_post tenga las claves adecuadas para el tipo de publicación
                 post_img_val = current_post.get("img", "").strip()
                 imagenes = [img.strip() for img in post_img_val.split(
                     "|") if img.strip()] if post_img_val else []
@@ -758,12 +821,12 @@ def procesar_cuenta(cuenta):
                 return 
 
             if not exito:
-                # Si falla (action="retry" o error general), se devuelve a la cola y se aplica un delay
+                # Si falla (action="retry" o error general), se devuelve a la cola de reintento.
                 print(
                     f"❌ Falló la publicación del post ID {original_index+1}.")
                 print(f"⚠️ Razón del fallo: {error_detalle}")
-                print(f"🔄 Se reintentará al final de la cola.")
-                pending_posts.append(current_post)
+                print(f"🔄 Se reintentará al inicio de la próxima iteración.")
+                posts_para_reintentar.append(current_post)
 
                 # Delay de recuperación corto 
                 delay_minutes_total = random.randint(11, 21)
@@ -771,7 +834,6 @@ def procesar_cuenta(cuenta):
                     f"⏳ Cuenta ({nombre_cuenta}) ❌ Post fallido. Aplicando delay de recuperación: {delay_minutes_total} minutos.")
             else:
                 # Si tiene éxito (action="success")
-                # 🟢 El delay se calcula aquí usando la lógica de prioridad (Individual, Global)
                 delay_minutes_total = get_post_delay(current_post, grupo_nombre)
                 delay_hours_display = delay_minutes_total / 60
 
@@ -779,12 +841,12 @@ def procesar_cuenta(cuenta):
                     f"⏳ Cuenta ({nombre_cuenta}) ✅ Post exitoso. Aplicando delay del ciclo: {delay_hours_display:.2f} horas ({delay_minutes_total} min).")
 
             # 3. Espera Controlada
-            sleep_seconds = delay_minutes_total * 12
+            # 🐞 CORRECCIÓN CRÍTICA: Convertir minutos a segundos (multiplicar por 60)
+            sleep_seconds = delay_minutes_total * 60 
             
             if not interruptible_sleep(sleep_seconds):
                 print(f"Cuenta ({nombre_cuenta}) detenido por interfaz.")
                 return
-
 
         print(
             f"✅ Hilo de cuenta ({nombre_cuenta}) terminado por orden de la GUI.")
