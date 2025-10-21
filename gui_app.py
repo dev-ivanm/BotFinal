@@ -95,13 +95,17 @@ def load_accounts_data():
         with open(CUENTAS_PATH, 'r', encoding='utf-8') as f:
             data = json.load(f)
             
-            # 💡 CORRECCIÓN CLAVE: Desanidar la lista
-            # Si el JSON es [[cuenta1, cuenta2, ...]], extraemos la lista interna
-            if isinstance(data, list) and len(data) == 1 and isinstance(data[0], list):
-                return data[0]
-                
-            # Si el formato es correcto ([cuenta1, cuenta2, ...]), lo devolvemos tal cual
-            return data
+            # CORRECCIÓN: Manejo más robusto de diferentes formatos
+            if isinstance(data, list):
+                if len(data) > 0 and isinstance(data[0], list):
+                    # Formato [[cuenta1, cuenta2, ...]] - extraer lista interna
+                    return data[0]
+                else:
+                    # Formato [cuenta1, cuenta2, ...] - devolver tal cual
+                    return data
+            else:
+                print(f"⚠️ Formato inesperado en {CUENTAS_PATH}")
+                return []
 
     except Exception as e:
         messagebox.showerror("Error de Carga", f"Error al cargar {CUENTAS_PATH}: {e}")
@@ -185,9 +189,33 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         self.current_img = tk.StringVar()
         self.current_delay_min = tk.StringVar()
         self.current_delay_max = tk.StringVar()
+        
+        # 🆕 Variables para el sistema de actualización
+        self.is_refreshing = False
+        self.last_refresh_time = time.time()
 
         self.notebook = ttb.Notebook(master)
         self.notebook.pack(pady=10, padx=10, expand=True, fill="both")
+
+        # 🆕 Barra de estado en la parte inferior
+        self.status_frame = ttb.Frame(master)
+        self.status_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=(0, 5))
+        
+        self.status_label = ttb.Label(
+            self.status_frame, 
+            text="🔄 Listo - Actualizaciones automáticas activadas", 
+            bootstyle="info",
+            font=("Arial", 8)
+        )
+        self.status_label.pack(side=tk.LEFT)
+        
+        self.refresh_indicator = ttb.Label(
+            self.status_frame, 
+            text="", 
+            bootstyle="success",
+            font=("Arial", 8)
+        )
+        self.refresh_indicator.pack(side=tk.RIGHT)
 
         # --- Creación de pestañas ---
         self.create_control_tab()
@@ -205,6 +233,72 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
         # 💡 FIX 2/3: Iniciar el refresco periódico de la GUI (árboles)
         self.periodic_refresh()
+
+    # 🆕 SISTEMA CENTRALIZADO DE ACTUALIZACIÓN DE TABLAS
+    def refresh_all_tables(self, force_update=False):
+        """
+        Actualiza todas las tablas de la interfaz de forma centralizada.
+        Se ejecuta automáticamente después de acciones que modifican datos.
+        """
+        if self.is_refreshing and not force_update:
+            return  # Evitar actualizaciones simultáneas
+            
+        self.is_refreshing = True
+        self.last_refresh_time = time.time()
+        
+        # Actualizar indicador visual
+        self.update_status_indicator("🔄 Actualizando tablas...")
+        
+        try:
+            # Actualizar tabla de cuentas (siempre)
+            self.update_account_tree()
+            
+            # Actualizar tabla de cuarentena (siempre)
+            self.update_quarantine_tree()
+            
+            # Actualizar tabla de grupos (siempre)
+            self.update_group_tree()
+            
+            # Actualizar tabla de fallos (siempre)
+            self.update_fallos_tree()
+            
+            # Si hay un editor de posts abierto, también actualizarlo
+            if hasattr(self, 'post_tree'):
+                try:
+                    # Verificar si el widget todavía existe antes de usarlo
+                    self.post_tree.winfo_exists()
+                    self.populate_post_tree()
+                except tk.TclError:
+                    # El widget ya no existe, no hacer nada
+                    pass
+                
+            self.update_status_indicator("✅ Tablas actualizadas", clear_after=2000)
+                
+        except Exception as e:
+            print(f"[ERROR] Error al actualizar tablas: {e}")
+            self.update_status_indicator("❌ Error al actualizar", clear_after=3000)
+        finally:
+            self.is_refreshing = False
+
+    def schedule_table_refresh(self, delay_ms=100):
+        """
+        Programa una actualización de tablas para después de un breve delay.
+        Útil para permitir que las operaciones de archivo se completen antes del refresh.
+        """
+        self.master.after(delay_ms, lambda: self.refresh_all_tables(force_update=True))
+
+    def update_status_indicator(self, message, clear_after=None):
+        """
+        Actualiza el indicador de estado en la barra inferior.
+        """
+        try:
+            if hasattr(self, 'refresh_indicator'):
+                self.refresh_indicator.config(text=message)
+                
+                if clear_after:
+                    self.master.after(clear_after, lambda: self.refresh_indicator.config(text=""))
+        except Exception:
+            pass  # Ignorar errores de GUI si la ventana se está cerrando
         
     # --- Pestaña 1: Control ---
     def create_control_tab(self):
@@ -565,16 +659,17 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         
     def check_bot_status_and_update_gui(self):        
         # 1. Actualizar las tablas (fuerza la recarga de cuentas.json)
-        self.update_account_tree()
-        self.update_fallos_tree() # Se incluye para ver los fallos detallados
+        self.refresh_all_tables()
 
         # 2. Verificar si el bot sigue corriendo usando la bandera global de core_poster
         if get_running_status():
-            # Si sigue corriendo, programa esta función para que se ejecute de nuevo en 5 segundos (5000 ms)
-            self.master.after(5000, self.check_bot_status_and_update_gui)
+            # Si sigue corriendo, programa esta función para que se ejecute de nuevo en 3 segundos (3000 ms)
+            self.master.after(3000, self.check_bot_status_and_update_gui)
         else:
             # Si se detuvo, asegura el estado final de los botones.
             self.update_button_states()
+            # Hacer un refresh final después de que se detenga el bot
+            self.schedule_table_refresh(500)
             
     def update_button_states(self):        
         is_running = get_running_status()
@@ -780,26 +875,43 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
     def periodic_refresh(self):
         """
         Refresca automáticamente las tablas de Cuentas, Cuarentena y Diagnóstico.
+        Optimizado para ser más eficiente según la pestaña activa.
         """
-        # Solo refrescamos los árboles para la pestaña actual
-        current_tab_name = self.notebook.tab(self.notebook.select(), "text")
+        try:
+            # Obtener la pestaña actualmente visible
+            current_tab_index = self.notebook.index(self.notebook.select())
+            current_tab_name = self.notebook.tab(current_tab_index, "text")
 
-        # if current_tab_name in ["Cuentas", "Control"]:
-        #     self.update_account_tree()
+            # Solo actualizar las tablas de la pestaña activa para mejorar rendimiento
+            if current_tab_name == "Cuentas":
+                self.update_account_tree()
+                self.update_quarantine_tree()  # Relacionada con cuentas
+            elif current_tab_name == "Cuarentena":
+                self.update_quarantine_tree()
+                self.update_account_tree()  # Para mantener sincronía
+            elif current_tab_name == "Diagnóstico":
+                self.update_fallos_tree()
+            elif current_tab_name == "Grupos":
+                self.update_group_tree()
+            elif current_tab_name == "Control":
+                # En Control, actualizamos solo si el bot está corriendo
+                if get_running_status():
+                    self.update_account_tree()
+                    self.update_fallos_tree()
 
-        # if current_tab_name == "Cuarentena":
-        #     self.update_quarantine_tree()
+            # Usar diferentes intervalos según si el bot está corriendo
+            refresh_interval = 2000 if get_running_status() else 5000  # 2s vs 5s
+            
+            # Actualizar status con información del refresh automático
+            bot_status = "🤖 Bot activo" if get_running_status() else "😴 Bot inactivo"
+            self.status_label.config(text=f"{bot_status} - Pestaña: {current_tab_name} - Refresh: {refresh_interval//1000}s")
+            
+        except Exception as e:
+            print(f"[ERROR] Error en periodic_refresh: {e}")
+            refresh_interval = 5000  # Fallback a 5 segundos
 
-        # if current_tab_name == "Diagnóstico":
-        #     self.update_fallos_tree()
-        
-        self.update_account_tree()     
-        self.update_quarantine_tree() 
-        self.update_fallos_tree()
-
-        # Reprogramar el refresco cada 3 segundos (3000 ms)
-        self.periodic_refresh_id = self.master.after(
-            3000, self.periodic_refresh)
+        # Reprogramar el refresco
+        self.periodic_refresh_id = self.master.after(refresh_interval, self.periodic_refresh)
 
     def on_closing(self):
         """Maneja el cierre de la ventana, asegurando la detención del bot."""
@@ -895,48 +1007,55 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         self.update_quarantine_tree()
 
     def update_quarantine_tree(self):
-        """Muestra solo las cuentas en estado 'quarantine' o 'require_login'."""
+    
         for i in self.quarantine_tree.get_children():
             self.quarantine_tree.delete(i)
 
         all_accounts = load_accounts_data()
+        
+        # CORRECCIÓN: Incluir ambos formatos (inglés y español)
         quarantined_accounts = [
-    # Solo incluye la cuenta si ES un diccionario Y su estado cumple la condición
-    acc for acc in all_accounts
-    if isinstance(acc, dict) and (
-        acc.get('estado', 'alive') == 'quarantine' or 
-        acc.get('estado') == 'bloqueo' or 
-        acc.get('estado') == 'require_login'
-    )
-]
+            acc for acc in all_accounts
+            if isinstance(acc, dict) and acc.get('estado') in [
+                'quarantine', 'cuarentena',  # Ambos formatos
+                'bloqueo', 'require_login'
+            ]
+        ]
 
+        # print(f"🔍 Diagnóstico Cuarentena: {len(all_accounts)} cuentas totales")
+        # print(f"🔍 Cuentas en cuarentena encontradas: {len(quarantined_accounts)}")
+        
         if not quarantined_accounts:
             self.quarantine_tree.insert('', tk.END, values=(
                 '', 'No hay cuentas en Cuarentena/Bloqueo. ¡Todo en orden! 🟢', ''), tags=('ok_quarantine',))
-            self.quarantine_tree.tag_configure(
-                'ok_quarantine', foreground='green')
+            self.quarantine_tree.tag_configure('ok_quarantine', foreground='green')
             return
 
         for account in quarantined_accounts:
             nombre = account.get('nombre', 'N/A')
             estado = account.get('estado', 'N/A')
-
-            if estado == 'quarantine':
-                razon = account.get('quarantine_reason',
-                                    'Proxy Crítico Desconocido')
+            
+            # CORRECCIÓN: Manejar ambos formatos
+            if estado in ['quarantine', 'cuarentena']:
+                razon = account.get('quarantine_reason', 'Proxy Crítico - Razón no especificada')
                 tag = 'quarantine'
+                estado_display = 'CUARENTENA'
             elif estado == 'require_login':
-                razon = account.get(
-                    'block_reason', 'Bloqueo/Require Login Desconocido')
+                razon = account.get('block_reason', 'Bloqueo/Require Login - Razón no especificada')
                 tag = 'login_block'
+                estado_display = 'REQUIRE_LOGIN'
+            elif estado == 'bloqueo':
+                razon = account.get('block_reason', 'Bloqueo - Razón no especificada')
+                tag = 'login_block'
+                estado_display = 'BLOQUEO'
             else:
                 continue
 
+            # print(f"  - Añadiendo a la tabla: {nombre} - {estado_display}")
             self.quarantine_tree.insert('', tk.END, values=(
-                nombre, estado.upper(), razon), tags=(tag,), iid=nombre)
+                nombre, estado_display, razon), tags=(tag,), iid=nombre)
 
-        self.quarantine_tree.tag_configure(
-            'quarantine', foreground='darkorange')
+        self.quarantine_tree.tag_configure('quarantine', foreground='darkorange')
         self.quarantine_tree.tag_configure('login_block', foreground='red')
 
     def restore_selected_quarantined(self):
@@ -964,10 +1083,10 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
                 _update_account_state(account_name, "alive")
                 restored_count += 1
 
+            # 🆕 ACTUALIZACIÓN AUTOMÁTICA DE TABLAS
+            self.schedule_table_refresh(200)
             messagebox.showinfo(
                 "Éxito", f"{restored_count} cuenta(s) restauradas a 'alive'.")
-
-            self.update_account_tree()  # Recargar ambas tablas
 
         except Exception as e:
             messagebox.showerror("Error de Restauración",
@@ -1013,7 +1132,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
         if cuentas_modificadas > 0:
             guardar_cuentas(cuentas)
-            self.update_account_tree()  # Recargar la tabla para mostrar los cambios
+            # 🆕 ACTUALIZACIÓN AUTOMÁTICA DE TABLAS
+            self.schedule_table_refresh(200)
             messagebox.showinfo(
                 "Éxito", f"{cuentas_modificadas} cuenta(s) han sido {action_text} correctamente.")
         else:
@@ -1042,7 +1162,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
         if len(nueva_lista_cuentas) < len(cuentas):
             guardar_cuentas(nueva_lista_cuentas)
-            self.update_account_tree()
+            # 🆕 ACTUALIZACIÓN AUTOMÁTICA DE TABLAS
+            self.schedule_table_refresh(200)
             messagebox.showinfo(
                 "Éxito", f"Cuenta '{account_name}' eliminada correctamente.")
         else:
@@ -1155,7 +1276,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
             # 4. Guardar y actualizar
             guardar_cuentas(cuentas_existentes)
-            self.update_account_tree()
+            # 🆕 ACTUALIZACIÓN AUTOMÁTICA DE TABLAS
+            self.schedule_table_refresh(300)
 
             messagebox.showinfo(
                 "Importación Completa",
@@ -1298,7 +1420,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
                 if found:
                     guardar_cuentas(all_accounts)
-                    self.update_account_tree()
+                    # 🆕 ACTUALIZACIÓN AUTOMÁTICA DE TABLAS
+                    self.schedule_table_refresh(200)
                     editor_window.destroy()
                     messagebox.showinfo(
                         "Éxito", f"Cuenta '{account_name}' actualizada correctamente.")
@@ -1369,7 +1492,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
                 messagebox.showinfo(
                     "Éxito", f"Grupo '{clean_name}' creado exitosamente en {GRUPOS_DIR}.")
-                self.update_group_tree()
+                # 🆕 ACTUALIZACIÓN AUTOMÁTICA DE TABLAS
+                self.schedule_table_refresh(200)
 
             except Exception as e:
                 messagebox.showerror(
@@ -1403,7 +1527,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
             os.remove(path)
             messagebox.showinfo(
                 "Éxito", f"Grupo '{group_name}' eliminado correctamente.")
-            self.update_group_tree()
+            # 🆕 ACTUALIZACIÓN AUTOMÁTICA DE TABLAS
+            self.schedule_table_refresh(200)
         except FileNotFoundError:
             messagebox.showerror(
                 "Error", f"El archivo del grupo '{group_name}' no se encontró.")
@@ -1719,8 +1844,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(posts_list, f, indent=2, ensure_ascii=False)
 
-            # Refrescar la tabla de Grupos en la pestaña principal
-            self.update_group_tree()
+            # 🆕 ACTUALIZACIÓN AUTOMÁTICA DE TABLAS - Programar refresh
+            self.schedule_table_refresh(200)
 
             if show_success:
                 messagebox.showinfo(
@@ -1823,6 +1948,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
                 return
 
             if self.save_posts_to_group(group_name, new_posts):
+                # 🆕 ACTUALIZACIÓN AUTOMÁTICA DE TABLAS
+                self.schedule_table_refresh(300)
                 messagebox.showinfo(
                     "Importación Completa", f"Se importaron {len(new_posts)} posts al grupo '{group_name}'.")
 

@@ -1,1 +1,284 @@
-[]
+[
+  {
+    "timestamp": "2025-10-21 08:50:02",
+    "nombre": "sabrinaf_014",
+    "post": -1,
+    "error_msg": "VERIFICACIÓN INICIAL FALLIDA: Redirección inesperada: https://www.threads.com/"
+  },
+  {
+    "timestamp": "2025-10-21 08:50:35",
+    "nombre": "sabrinaf_013",
+    "post": -1,
+    "error_msg": "VERIFICACIÓN INICIAL FALLIDA: Redirección inesperada: https://www.threads.com/"
+  },
+  {
+    "timestamp": "2025-10-21 09:21:41",
+    "nombre": "Marta.41_1",
+    "post": 43,
+    "error_msg": "FALLO DE VERIFICACIÓN: Error al parsear respuesta de verificación - Post ID: 3748304081375070529"
+  },
+  {
+    "timestamp": "2025-10-21 09:45:15",
+    "nombre": "Carla_05_4",
+    "post": 74,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:18:54",
+    "nombre": "Irene.90_.5",
+    "post": 20,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:20:04",
+    "nombre": "Clara_04.2",
+    "post": 1,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:20:51",
+    "nombre": "Sofia.Mar_23",
+    "post": 77,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:21:21",
+    "nombre": "Carla.Rio_6",
+    "post": 16,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:21:55",
+    "nombre": "Lucia.76Sol",
+    "post": 20,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:22:19",
+    "nombre": "Martina.Nox_4",
+    "post": 18,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:22:39",
+    "nombre": "Adriana.Bosq_7",
+    "post": 74,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:23:07",
+    "nombre": "Laura.Lun_18",
+    "post": 76,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:23:54",
+    "nombre": "claudia.Mar_423",
+    "post": 22,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:24:16",
+    "nombre": "Valeria.Sky_9",
+    "post": 71,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:24:57",
+    "nombre": "ana.Sur_33",
+    "post": 14,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:25:40",
+    "nombre": "Julia.Nox_26",
+    "post": 40,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 10:36:14",
+    "nombre": "elena739",
+    "post": 75,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:34:06",
+    "nombre": "jullietta739",
+    "post": 6,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:37:03",
+    "nombre": "lunafulgente7",
+    "post": 40,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:38:49",
+    "nombre": "sabrinaa_ka",
+    "post": 18,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:40:05",
+    "nombre": "sabrinaa_lq",
+    "post": 57,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:40:05",
+    "nombre": "sabrinaa_lq",
+    "post": 57,
+    "error_msg": "ERROR GENERAL: [WinError 5] Acceso denegado: 'cuentas.json.tmp' -> 'cuentas.json'"
+  },
+  {
+    "timestamp": "2025-10-21 12:41:06",
+    "nombre": "sabrinaa_pv",
+    "post": 54,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:41:07",
+    "nombre": "sabrinaa_nxt",
+    "post": 80,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:44:41",
+    "nombre": "Carla_05_4",
+    "post": 79,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:45:22",
+    "nombre": "Alba_7._",
+    "post": 46,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:45:49",
+    "nombre": "Irene.90_.5",
+    "post": 21,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:46:48",
+    "nombre": "Clara_04.2",
+    "post": 81,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:47:07",
+    "nombre": "Sofia.Mar_23",
+    "post": 29,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:47:41",
+    "nombre": "Carla.Rio_6",
+    "post": 26,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:48:09",
+    "nombre": "Lucia.76Sol",
+    "post": 6,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:48:46",
+    "nombre": "Martina.Nox_4",
+    "post": 0,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:49:11",
+    "nombre": "Adriana.Bosq_7",
+    "post": 53,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:49:32",
+    "nombre": "Laura.Lun_18",
+    "post": 23,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:50:22",
+    "nombre": "claudia.Mar_423",
+    "post": 25,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:50:37",
+    "nombre": "Valeria.Sky_9",
+    "post": 44,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:51:25",
+    "nombre": "ana.Sur_33",
+    "post": 6,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 12:51:41",
+    "nombre": "Julia.Nox_26",
+    "post": 0,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 13:11:04",
+    "nombre": "Paula_.z2_",
+    "post": 35,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 13:50:49",
+    "nombre": "jullietta914",
+    "post": 11,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 13:52:19",
+    "nombre": "jullietta26",
+    "post": 23,
+    "error_msg": "BLOQUEO HTML/HTTP 400: Cuenta Baneada/Error Crítico."
+  },
+  {
+    "timestamp": "2025-10-21 15:03:51",
+    "nombre": "sabrinaa_vj",
+    "post": 54,
+    "error_msg": "CUENTA INVÁLIDA: Error de proxy"
+  },
+  {
+    "timestamp": "2025-10-21 15:13:19",
+    "nombre": "Elena._16l",
+    "post": 42,
+    "error_msg": "CUENTA INVÁLIDA: Error de proxy"
+  },
+  {
+    "timestamp": "2025-10-21 16:03:44",
+    "nombre": "sabrinaa_ja",
+    "post": 17,
+    "error_msg": "FALLO DE VERIFICACIÓN CONFIRMADO: Error al parsear respuesta de verificación - Post ID: 3748506297168701295"
+  },
+  {
+    "timestamp": "2025-10-21 17:03:35",
+    "nombre": "jullietta469",
+    "post": 38,
+    "error_msg": "FALLO DE VERIFICACIÓN CONFIRMADO: Error al parsear respuesta de verificación - Post ID: 3748536433007927054"
+  },
+  {
+    "timestamp": "2025-10-21 17:03:36",
+    "nombre": "jullietta489",
+    "post": 26,
+    "error_msg": "CUENTA INVÁLIDA: Error de proxy"
+  },
+  {
+    "timestamp": "2025-10-21 17:04:16",
+    "nombre": "jullietta233",
+    "post": -1,
+    "error_msg": "VERIFICACIÓN INICIAL FALLIDA: Error de proxy"
+  }
+]
