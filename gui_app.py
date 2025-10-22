@@ -1,6 +1,8 @@
 # gui_app.py
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog, Toplevel
+from tkinter.scrolledtext import ScrolledText
+from tkinter import scrolledtext
 import ttkbootstrap as ttb
 import json
 import os
@@ -88,13 +90,15 @@ def save_group_content(group_name, content):
         return False
 
 # Función de carga (Asumiendo que usa json.load)
+
+
 def load_accounts_data():
     if not os.path.exists(CUENTAS_PATH):
         return []
     try:
         with open(CUENTAS_PATH, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            
+
             # CORRECCIÓN: Manejo más robusto de diferentes formatos
             if isinstance(data, list):
                 if len(data) > 0 and isinstance(data[0], list):
@@ -108,7 +112,8 @@ def load_accounts_data():
                 return []
 
     except Exception as e:
-        messagebox.showerror("Error de Carga", f"Error al cargar {CUENTAS_PATH}: {e}")
+        messagebox.showerror(
+            "Error de Carga", f"Error al cargar {CUENTAS_PATH}: {e}")
         return []
 
 
@@ -123,19 +128,21 @@ def load_fallos_data():
         # Si el archivo está corrupto o vacío, retorna lista vacía
         return []
 
+
 def save_group_data(group_name, posts):
     if not group_name:
-        messagebox.showerror("Error", "El nombre del grupo no puede estar vacío.")
+        messagebox.showerror(
+            "Error", "El nombre del grupo no puede estar vacío.")
         return False
-    
+
     # 1. Crear el directorio de imágenes del grupo
     group_dir = os.path.join(GRUPOS_DIR, group_name)
-    os.makedirs(group_dir, exist_ok=True) 
-    
+    os.makedirs(group_dir, exist_ok=True)
+
     # CORRECCIÓN: Crear subcarpeta para imágenes
     imagenes_dir = os.path.join(group_dir, "imagenes")
     os.makedirs(imagenes_dir, exist_ok=True)
-    
+
     # 2. Procesar posts para copiar imágenes a la carpeta del grupo
     for post in posts:
         img_path = post.get('img', '').strip()
@@ -144,11 +151,11 @@ def save_group_data(group_name, posts):
                 # Copiar imagen a la carpeta del grupo
                 img_filename = os.path.basename(img_path)
                 dest_path = os.path.join(imagenes_dir, img_filename)
-                
+
                 if not os.path.exists(dest_path):
                     shutil.copy2(img_path, dest_path)
                     print(f"📁 Imagen copiada: {img_filename}")
-                
+
                 # Actualizar la ruta en el post para usar ruta relativa
                 post['img'] = os.path.join("imagenes", img_filename)
             except Exception as e:
@@ -161,13 +168,14 @@ def save_group_data(group_name, posts):
             json.dump(posts, f, indent=2, ensure_ascii=False)
         return True
     except Exception as e:
-        messagebox.showerror("Error de Guardado", f"No se pudo guardar el archivo del grupo: {e}")
+        messagebox.showerror("Error de Guardado",
+                             f"No se pudo guardar el archivo del grupo: {e}")
         return False
-    
+
 # --- Clase Principal de la GUI ---
 
 
-class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más limpio de ttkbootstrap
+class PosterApp(ttb.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.master = master
@@ -175,7 +183,7 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         master.geometry("1100x650")
 
         ttb.Style("flatly")
-        
+
         # 🟢 CORRECCIÓN 1: Inicializar self.bot_thread a None para evitar AttributeError
         self.bot_thread = None
 
@@ -189,7 +197,7 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         self.current_img = tk.StringVar()
         self.current_delay_min = tk.StringVar()
         self.current_delay_max = tk.StringVar()
-        
+
         # 🆕 Variables para el sistema de actualización
         self.is_refreshing = False
         self.last_refresh_time = time.time()
@@ -200,18 +208,18 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         # 🆕 Barra de estado en la parte inferior
         self.status_frame = ttb.Frame(master)
         self.status_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=(0, 5))
-        
+
         self.status_label = ttb.Label(
-            self.status_frame, 
-            text="🔄 Listo - Actualizaciones automáticas activadas", 
+            self.status_frame,
+            text="🔄 Listo - Actualizaciones automáticas activadas",
             bootstyle="info",
             font=("Arial", 8)
         )
         self.status_label.pack(side=tk.LEFT)
-        
+
         self.refresh_indicator = ttb.Label(
-            self.status_frame, 
-            text="", 
+            self.status_frame,
+            text="",
             bootstyle="success",
             font=("Arial", 8)
         )
@@ -242,26 +250,26 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         """
         if self.is_refreshing and not force_update:
             return  # Evitar actualizaciones simultáneas
-            
+
         self.is_refreshing = True
         self.last_refresh_time = time.time()
-        
+
         # Actualizar indicador visual
         self.update_status_indicator("🔄 Actualizando tablas...")
-        
+
         try:
             # Actualizar tabla de cuentas (siempre)
             self.update_account_tree()
-            
+
             # Actualizar tabla de cuarentena (siempre)
             self.update_quarantine_tree()
-            
+
             # Actualizar tabla de grupos (siempre)
             self.update_group_tree()
-            
+
             # Actualizar tabla de fallos (siempre)
             self.update_fallos_tree()
-            
+
             # Si hay un editor de posts abierto, también actualizarlo
             if hasattr(self, 'post_tree'):
                 try:
@@ -271,12 +279,14 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
                 except tk.TclError:
                     # El widget ya no existe, no hacer nada
                     pass
-                
-            self.update_status_indicator("✅ Tablas actualizadas", clear_after=2000)
-                
+
+            self.update_status_indicator(
+                "✅ Tablas actualizadas", clear_after=2000)
+
         except Exception as e:
             print(f"[ERROR] Error al actualizar tablas: {e}")
-            self.update_status_indicator("❌ Error al actualizar", clear_after=3000)
+            self.update_status_indicator(
+                "❌ Error al actualizar", clear_after=3000)
         finally:
             self.is_refreshing = False
 
@@ -285,7 +295,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         Programa una actualización de tablas para después de un breve delay.
         Útil para permitir que las operaciones de archivo se completen antes del refresh.
         """
-        self.master.after(delay_ms, lambda: self.refresh_all_tables(force_update=True))
+        self.master.after(
+            delay_ms, lambda: self.refresh_all_tables(force_update=True))
 
     def update_status_indicator(self, message, clear_after=None):
         """
@@ -294,12 +305,411 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         try:
             if hasattr(self, 'refresh_indicator'):
                 self.refresh_indicator.config(text=message)
-                
+
                 if clear_after:
-                    self.master.after(clear_after, lambda: self.refresh_indicator.config(text=""))
+                    self.master.after(
+                        clear_after, lambda: self.refresh_indicator.config(text=""))
         except Exception:
             pass  # Ignorar errores de GUI si la ventana se está cerrando
-        
+
+    # 🆕 MÉTODOS DE EDICIÓN JSON (NUEVOS)
+    def show_json_editor(self, data_type):
+        """Muestra un editor JSON para cuentas o grupos."""
+        if data_type == "cuentas":
+            title = "Editor JSON - Cuentas"
+            # Cargar datos actuales de cuentas
+            try:
+                current_data = cargar_cuentas()
+                if not current_data:
+                    current_data = []
+            except:
+                current_data = []
+        else:  # grupos
+            title = "Editor JSON - Grupos"
+            # Cargar datos del grupo seleccionado
+            selected_group = self.get_selected_name(self.group_tree)
+            if not selected_group:
+                messagebox.showwarning(
+                    "Advertencia", "Por favor, seleccione un grupo para editar.")
+                return
+
+            try:
+                current_data = self.load_posts_for_editor(selected_group)
+                if not current_data:
+                    current_data = []
+            except:
+                current_data = []
+            title = f"Editor JSON - Grupo: {selected_group}"
+
+        # Crear ventana de editor
+        editor = Toplevel(self.master)
+        editor.title(title)
+        editor.transient(self.master)
+        editor.grab_set()
+        editor.geometry("900x700")
+
+        main_frame = ttb.Frame(editor, padding=15)
+        main_frame.pack(expand=True, fill="both")
+
+        # Título e instrucciones
+        ttb.Label(main_frame, text=title, bootstyle="primary",
+                  font=("Arial", 12, "bold")).pack(anchor="w", pady=(0, 10))
+
+        instructions = """📝 Editor JSON - Puede editar el contenido directamente en formato JSON.
+
+Para cuentas, el formato debe ser una lista de objetos con:
+- nombre (string): Nombre de la cuenta
+- grupo (string): Grupo asignado  
+- proxy (string): Proxy en formato user:pass@ip:port
+- cookies (object): Objeto con las cookies requeridas
+- estado (string): Estado de la cuenta (alive, quarantine, etc.)
+- enabled (boolean): Si la cuenta está habilitada
+
+Para posts, el formato debe ser una lista de objetos con:
+- caption (string): Texto del post
+- img (string): Ruta de la imagen/video
+- delay_min (number): Delay mínimo en minutos
+- delay_max (number): Delay máximo en minutos
+
+Use Ctrl+A para seleccionar todo, Ctrl+C para copiar, Ctrl+V para pegar."""
+
+        instructions_text = ScrolledText(main_frame, height=8, wrap=tk.WORD)
+        instructions_text.insert("1.0", instructions)
+        instructions_text.config(state=tk.DISABLED)
+        instructions_text.pack(fill="x", pady=(0, 10))
+
+        # Área de texto para JSON
+        json_frame = ttb.LabelFrame(
+            main_frame, text="Contenido JSON", padding=10)
+        json_frame.pack(expand=True, fill="both", pady=5)
+
+        json_text = ScrolledText(
+            json_frame, wrap=tk.WORD, font=("Consolas", 10))
+        json_text.pack(expand=True, fill="both")
+
+        # Insertar datos actuales formateados
+        try:
+            formatted_json = json.dumps(
+                current_data, indent=2, ensure_ascii=False)
+            json_text.insert("1.0", formatted_json)
+        except Exception as e:
+            json_text.insert("1.0", f"Error al cargar datos: {e}")
+
+        # Botones de acción
+        button_frame = ttb.Frame(main_frame)
+        button_frame.pack(fill="x", pady=10)
+
+        def validate_and_save():
+            json_content = json_text.get("1.0", tk.END).strip()
+            if not json_content:
+                messagebox.showwarning(
+                    "Advertencia", "El contenido JSON no puede estar vacío.")
+                return
+
+            try:
+                # Validar JSON
+                parsed_data = json.loads(json_content)
+
+                if not isinstance(parsed_data, list):
+                    messagebox.showerror(
+                        "Error", "El JSON debe contener una lista/array.")
+                    return
+
+                # Validaciones específicas según el tipo
+                if data_type == "cuentas":
+                    for item in parsed_data:
+                        if not isinstance(item, dict):
+                            raise ValueError(
+                                "Cada elemento debe ser un objeto")
+                        if 'nombre' not in item or 'cookies' not in item:
+                            raise ValueError(
+                                "Cada cuenta debe tener 'nombre' y 'cookies'")
+                else:  # grupos
+                    for item in parsed_data:
+                        if not isinstance(item, dict):
+                            raise ValueError(
+                                "Cada elemento debe ser un objeto")
+                        if 'caption' not in item and 'img' not in item:
+                            raise ValueError(
+                                "Cada post debe tener al menos 'caption' o 'img'")
+
+                # Guardar según el tipo
+                if data_type == "cuentas":
+                    guardar_cuentas(parsed_data)
+                    messagebox.showinfo(
+                        "Éxito", f"Se guardaron {len(parsed_data)} cuentas correctamente.")
+                else:
+                    if self.save_posts_to_group(selected_group, parsed_data, show_success=False):
+                        messagebox.showinfo(
+                            "Éxito", f"Se guardaron {len(parsed_data)} posts en el grupo '{selected_group}'.")
+
+                # Actualizar interfaz
+                self.schedule_table_refresh(500)
+                editor.destroy()
+
+            except json.JSONDecodeError as e:
+                messagebox.showerror(
+                    "Error de JSON", f"El JSON no es válido:\n{str(e)}")
+            except Exception as e:
+                messagebox.showerror(
+                    "Error", f"Error al procesar los datos:\n{str(e)}")
+
+        def format_json():
+            try:
+                content = json_text.get("1.0", tk.END).strip()
+                if content:
+                    parsed = json.loads(content)
+                    formatted = json.dumps(
+                        parsed, indent=2, ensure_ascii=False)
+                    json_text.delete("1.0", tk.END)
+                    json_text.insert("1.0", formatted)
+            except Exception as e:
+                messagebox.showerror(
+                    "Error", f"No se pudo formatear el JSON:\n{str(e)}")
+
+        def load_from_file():
+            filepath = filedialog.askopenfilename(
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+            )
+            if filepath:
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    json_text.delete("1.0", tk.END)
+                    json_text.insert("1.0", content)
+                except Exception as e:
+                    messagebox.showerror(
+                        "Error", f"No se pudo cargar el archivo:\n{str(e)}")
+
+        def save_to_file():
+            filepath = filedialog.asksaveasfilename(
+                defaultextension=".json",
+                filetypes=[("JSON files", "*.json")],
+                initialfile=f"{data_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            )
+            if filepath:
+                try:
+                    content = json_text.get("1.0", tk.END).strip()
+                    with open(filepath, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    messagebox.showinfo(
+                        "Éxito", f"Archivo guardado en:\n{filepath}")
+                except Exception as e:
+                    messagebox.showerror(
+                        "Error", f"No se pudo guardar el archivo:\n{str(e)}")
+
+        # Botones principales
+        action_frame = ttb.Frame(button_frame)
+        action_frame.pack(side=tk.LEFT)
+
+        ttb.Button(action_frame, text="💾 Guardar", bootstyle="success",
+                   command=validate_and_save).pack(side=tk.LEFT, padx=5)
+        ttb.Button(action_frame, text="✨ Formatear", bootstyle="info",
+                   command=format_json).pack(side=tk.LEFT, padx=5)
+
+        # Botones de archivo
+        file_frame = ttb.Frame(button_frame)
+        file_frame.pack(side=tk.RIGHT)
+
+        ttb.Button(file_frame, text="📂 Cargar Archivo", bootstyle="secondary",
+                   command=load_from_file).pack(side=tk.RIGHT, padx=5)
+        ttb.Button(file_frame, text="💾 Guardar Archivo", bootstyle="secondary",
+                   command=save_to_file).pack(side=tk.RIGHT, padx=5)
+        ttb.Button(file_frame, text="❌ Cancelar", bootstyle="danger",
+                   command=editor.destroy).pack(side=tk.RIGHT, padx=5)
+
+    def show_json_importer(self, data_type):
+        """Muestra un importador JSON simple para cuentas o grupos."""
+        if data_type == "cuentas":
+            title = "Importar Cuentas desde JSON"
+            instructions = """Pegue el JSON con las cuentas en el área de texto.
+
+Formato esperado:
+[
+  {
+    "nombre": "usuario1",
+    "grupo": "grupoA", 
+    "proxy": "user:pass@ip:port",
+    "cookies": {
+      "cb": "...", "mid": "...", "ig_did": "...",
+      "ds_user_id": "...", "csrftoken": "...", 
+      "sessionid": "...", "rur": "..."
+    },
+    "estado": "alive",
+    "enabled": true
+  }
+]"""
+        else:
+            title = "Importar Posts desde JSON"
+            instructions = """Pegue el JSON con los posts en el área de texto.
+
+Formato esperado:
+[
+  {
+    "caption": "Texto del post...",
+    "img": "/ruta/a/imagen.jpg",
+    "delay_min": 30,
+    "delay_max": 60
+  }
+]"""
+
+        dialog = Toplevel(self.master)
+        dialog.title(title)
+        dialog.transient(self.master)
+        dialog.grab_set()
+        dialog.geometry("700x500")
+
+        main_frame = ttb.Frame(dialog, padding=15)
+        main_frame.pack(expand=True, fill="both")
+
+        # Título e instrucciones
+        ttb.Label(main_frame, text=title, bootstyle="primary",
+                  font=("Arial", 12, "bold")).pack(anchor="w", pady=(0, 10))
+
+        instructions_text = scrolledtext.ScrolledText(
+            main_frame, height=6, wrap=tk.WORD)
+        instructions_text.insert("1.0", instructions)
+        instructions_text.config(state=tk.DISABLED)
+        instructions_text.pack(fill="x", pady=(0, 10))
+
+        # Área de texto para JSON
+        json_frame = ttb.LabelFrame(main_frame, text="Texto JSON", padding=10)
+        json_frame.pack(expand=True, fill="both", pady=5)
+
+        json_text = scrolledtext.ScrolledText(
+            json_frame, wrap=tk.WORD, font=("Consolas", 10))
+        json_text.pack(expand=True, fill="both")
+
+        # Botones
+        button_frame = ttb.Frame(main_frame)
+        button_frame.pack(fill="x", pady=10)
+
+        def on_import():
+            json_content = json_text.get("1.0", tk.END).strip()
+            if not json_content:
+                messagebox.showwarning(
+                    "Advertencia", "Por favor, ingrese texto JSON válido.")
+                return
+
+            try:
+                data = json.loads(json_content)
+
+                if data_type == "cuentas":
+                    self.import_accounts_from_json_data(data)
+                else:
+                    group_name = simpledialog.askstring(
+                        "Nombre del Grupo",
+                        "Ingrese el nombre del grupo para los posts:",
+                        parent=dialog
+                    )
+                    if group_name:
+                        self.import_posts_from_json_data(group_name, data)
+
+                dialog.destroy()
+
+            except json.JSONDecodeError as e:
+                messagebox.showerror(
+                    "Error de JSON", f"El texto JSON no es válido:\n{e}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al importar: {e}")
+
+        ttb.Button(button_frame, text="📥 Importar", bootstyle="success",
+                   command=on_import).pack(side=tk.LEFT, padx=5)
+        ttb.Button(button_frame, text="📋 Pegar", bootstyle="info",
+                   command=lambda: json_text.insert(tk.END, dialog.clipboard_get())).pack(side=tk.LEFT, padx=5)
+        ttb.Button(button_frame, text="❌ Cancelar", bootstyle="secondary",
+                   command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
+
+    def save_group_data(self, group_name, posts_data, show_success=True):
+        path = os.path.join(GRUPOS_DIR, f"{group_name}.json")
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(posts_data, f, indent=2, ensure_ascii=False)
+
+            # Actualizar tablas
+            self.schedule_table_refresh(200)
+
+            if show_success:
+                messagebox.showinfo(
+                    "Éxito",
+                    f"Se guardaron {len(posts_data)} posts en el grupo '{group_name}'."
+                )
+            return True
+        except Exception as e:
+            messagebox.showerror(
+                "Error al Guardar",
+                f"Error al guardar {group_name}.json: {e}"
+            )
+            return False
+
+    def import_accounts_from_json_data(self, data):
+        """Importa cuentas desde datos JSON."""
+        if not isinstance(data, list):
+            messagebox.showerror(
+                "Error", "El JSON debe contener una lista de cuentas.")
+            return
+
+        cuentas_existentes = cargar_cuentas()
+        cuentas_por_nombre = {c['nombre']: c for c in cuentas_existentes}
+
+        nuevas = 0
+        actualizadas = 0
+
+        for cuenta_data in data:
+            if not isinstance(cuenta_data, dict) or 'nombre' not in cuenta_data:
+                continue
+
+            nombre = cuenta_data['nombre']
+            cuenta_completa = {
+                'nombre': nombre,
+                'grupo': cuenta_data.get('grupo', 'default'),
+                'proxy': cuenta_data.get('proxy', ''),
+                'cookies': cuenta_data.get('cookies', {}),
+                'estado': cuenta_data.get('estado', 'alive'),
+                'enabled': cuenta_data.get('enabled', True)
+            }
+
+            if nombre in cuentas_por_nombre:
+                cuentas_por_nombre[nombre].update(cuenta_completa)
+                actualizadas += 1
+            else:
+                cuentas_existentes.append(cuenta_completa)
+                nuevas += 1
+
+        guardar_cuentas(cuentas_existentes)
+        self.schedule_table_refresh(300)
+
+        messagebox.showinfo(
+            "Importación Completa",
+            f"Cuentas importadas:\n• Nuevas: {nuevas}\n• Actualizadas: {actualizadas}"
+        )
+
+    def import_posts_from_json_data(self, group_name, data):
+        """Importa posts desde datos JSON a un grupo."""
+        if not isinstance(data, list):
+            messagebox.showerror(
+                "Error", "El JSON debe contener una lista de posts.")
+            return
+
+        posts_validos = []
+        for post in data:
+            if isinstance(post, dict):
+                post_valido = {
+                    'caption': post.get('caption', ''),
+                    'img': post.get('img', ''),
+                    'delay_min': post.get('delay_min', 30),
+                    'delay_max': post.get('delay_max', 60)
+                }
+                posts_validos.append(post_valido)
+
+        if posts_validos:
+            if self.save_group_data(group_name, posts_validos):
+                self.schedule_table_refresh(300)
+                messagebox.showinfo(
+                    "Importación Completa",
+                    f"Se importaron {len(posts_validos)} posts al grupo '{group_name}'."
+                )
+
     # --- Pestaña 1: Control ---
     def create_control_tab(self):
         control_frame = ttb.Frame(self.notebook, padding=10)
@@ -367,10 +777,21 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         button_frame = ttb.Frame(accounts_frame)
         button_frame.pack(pady=10, fill="x")
 
+        # Botones existentes de CSV
         ttb.Button(button_frame, text="⬆️ Importar Cuentas (CSV)", bootstyle="primary",
                    command=self.import_accounts_from_csv).pack(side=tk.LEFT, padx=10)
         ttb.Button(button_frame, text="⬇️ Descargar Plantilla (CSV)", bootstyle="info",
                    command=self.download_csv_template).pack(side=tk.LEFT, padx=10)
+
+        # NUEVO: Separador y botones JSON
+        ttb.Separator(button_frame, orient=tk.VERTICAL).pack(
+            side=tk.LEFT, padx=15)
+
+        # Botones JSON para cuentas
+        ttb.Button(button_frame, text="📝 Editar JSON Cuentas", bootstyle="warning",
+                   command=lambda: self.show_json_editor("cuentas")).pack(side=tk.LEFT, padx=10)
+        ttb.Button(button_frame, text="📥 Importar JSON Cuentas", bootstyle="success",
+                   command=lambda: self.show_json_importer("cuentas")).pack(side=tk.LEFT, padx=10)
 
         ttb.Separator(button_frame, orient=tk.VERTICAL).pack(
             side=tk.LEFT, padx=15)
@@ -403,14 +824,14 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
         self.group_tree = ttk.Treeview(
             table_container, columns=('Nombre', 'Posts'), show='headings')
-        
+
         info_label = ttb.Label(
-        groups_frame, 
-        text=f"🎯 Modo de delay actual: {'Individuales' if DELAY_CONFIG['use_individual_delays'] else 'General'}",
-        bootstyle="info",
-        font=("Arial", 9)
+            groups_frame,
+            text=f"🎯 Modo de delay actual: {'Individuales' if DELAY_CONFIG['use_individual_delays'] else 'General'}",
+            bootstyle="info",
+            font=("Arial", 9)
         )
-        info_label.pack(pady=5, anchor="w") 
+        info_label.pack(pady=5, anchor="w")
 
         self.group_tree.heading('Nombre', text='Nombre del Grupo', anchor=tk.W)
         self.group_tree.heading('Posts', text='# Posts', anchor=tk.CENTER)
@@ -431,11 +852,21 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         button_frame.pack(pady=10, fill="x")
 
         # Botones de gestión completos
-        # FIX: Se corrigió el error AttributeError añadiendo el método import_posts_from_csv
+        # Botones existentes de CSV
         ttb.Button(button_frame, text="⬆️ Importar Posts (CSV)", bootstyle="primary",
                    command=self.import_posts_from_csv).pack(side=tk.LEFT, padx=5)
         ttb.Button(button_frame, text="⬇️ Descargar Plantilla (CSV)", bootstyle="info",
                    command=self.download_group_csv_template).pack(side=tk.LEFT, padx=5)
+
+        # NUEVO: Separador y botones JSON
+        ttb.Separator(button_frame, orient=tk.VERTICAL).pack(
+            side=tk.LEFT, padx=15)
+
+        # Botones JSON para grupos
+        ttb.Button(button_frame, text="📝 Editar JSON Posts", bootstyle="warning",
+                   command=lambda: self.show_json_editor("grupos")).pack(side=tk.LEFT, padx=5)
+        ttb.Button(button_frame, text="📥 Importar JSON Posts", bootstyle="success",
+                   command=lambda: self.show_json_importer("grupos")).pack(side=tk.LEFT, padx=5)
 
         ttb.Separator(button_frame, orient=tk.VERTICAL).pack(
             side=tk.LEFT, padx=15)
@@ -461,8 +892,10 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         self.notebook.add(delay_frame, text="Delay")
 
         # Variables de control
-        self.min_delay_var = tk.StringVar(value=str(DELAY_CONFIG["min_minutes"]))
-        self.max_delay_var = tk.StringVar(value=str(DELAY_CONFIG["max_minutes"]))
+        self.min_delay_var = tk.StringVar(
+            value=str(DELAY_CONFIG["min_minutes"]))
+        self.max_delay_var = tk.StringVar(
+            value=str(DELAY_CONFIG["max_minutes"]))
         self.use_individual_delays_var = tk.BooleanVar(
             value=DELAY_CONFIG["use_individual_delays"])
 
@@ -489,7 +922,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         max_entry.grid(row=1, column=1, padx=5, pady=5, sticky="w")
 
         # Sección de Modo de Delay
-        mode_frame = ttb.LabelFrame(main_grid, text="🎯 Modo de Delay", padding=10)
+        mode_frame = ttb.LabelFrame(
+            main_grid, text="🎯 Modo de Delay", padding=10)
         mode_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
 
         # Radio buttons para selección de modo
@@ -584,7 +1018,7 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
             # Llama a la función del core para actualizar la configuración
             use_individual = self.use_individual_delays_var.get()
-            
+
             update_delay_config(min_val, max_val, use_individual)
 
             # Accedemos a la variable global DELAY_CONFIG para mostrar los valores corregidos
@@ -647,7 +1081,7 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
                    command=self.restore_selected_quarantined).pack(side=tk.LEFT, padx=10)
         ttb.Button(button_frame, text="🔄 Recargar Lista", bootstyle="info-outline",
                    command=self.update_quarantine_tree).pack(side=tk.RIGHT, padx=10)
-        
+
     def redirect_output(self, s, is_error=False):
         self.log_text.config(state=tk.NORMAL)
         if is_error:
@@ -656,8 +1090,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
             self.log_text.insert(tk.END, s)
         self.log_text.see(tk.END)
         self.log_text.config(state=tk.DISABLED)
-        
-    def check_bot_status_and_update_gui(self):        
+
+    def check_bot_status_and_update_gui(self):
         # 1. Actualizar las tablas (fuerza la recarga de cuentas.json)
         self.refresh_all_tables()
 
@@ -670,8 +1104,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
             self.update_button_states()
             # Hacer un refresh final después de que se detenga el bot
             self.schedule_table_refresh(500)
-            
-    def update_button_states(self):        
+
+    def update_button_states(self):
         is_running = get_running_status()
 
         if hasattr(self, 'start_button') and hasattr(self, 'stop_button'):
@@ -687,9 +1121,9 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
                 self.stop_button.config(state=tk.DISABLED)
                 # Opcional: Habilitar botones de configuración/carga
                 # if hasattr(self, 'load_accounts_button'): self.load_accounts_button.config(state=tk.NORMAL)
-                    
 
     # --- Pestaña 6: Diagnóstico ---
+
     def create_diagnostics_tab(self):
         diag_frame = ttb.Frame(self.notebook, padding=10)
         self.notebook.add(diag_frame, text="Diagnóstico")
@@ -742,92 +1176,45 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 # -------------------------------------------------
 # --- LÓGICA DE CONTROL DEL BOT (FIX CRÍTICO) ---
 # -------------------------------------------------
-    # def check_bot_status(self):
-        
-    #     # 1. Obtener el estado real del hilo
-    #     thread_is_alive = hasattr(self, 'bot_thread') and self.bot_thread.is_alive()
-        
-    #     # 2. Actualizar el estado de los botones basándose en la vida del hilo
-    #     if thread_is_alive:
-    #         # El proceso está VIVO (Corriendo o terminando su ciclo)
-    #         self.start_button.config(state=tk.DISABLED, bootstyle="secondary")
-    #         self.stop_button.config(state=tk.NORMAL, bootstyle="danger")
-
-    #         # Mostrar que está en proceso de detención si ya se le dio la señal de stop
-    #         if not get_running_status():
-    #              self.stop_button.config(text="⏳ Deteniendo...")
-    #     else:
-    #         # El proceso está MUERTO. El bot está realmente detenido.
-    #         self.start_button.config(state=tk.NORMAL, bootstyle="success")
-    #         self.stop_button.config(state=tk.DISABLED, bootstyle="danger-outline", text="⏹️ Detener Bot")
-            
-    #         # Si la bandera global era True y el thread ya murió, la reseteamos por seguridad
-    #         if get_running_status():
-    #             set_running_status(False)
-    #             print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Bot Detenido Exitosamente (El hilo principal terminó).")
-
-
-    #     # 3. Re-programar la ejecución
-    #     self.master.after(500, self.check_bot_status)
-        
-    #     """
-    #     Verifica el estado del bot y actualiza los botones Iniciar/Detener.
-    #     Se llama periódicamente con master.after() cada 100ms.
-    #     """
-    #     is_running_flag = get_running_status()
-    #     # Asegurarse de que self.bot_thread existe antes de llamar a is_alive()
-    #     is_thread_alive = hasattr(
-    #         self, 'bot_thread') and self.bot_thread and self.bot_thread.is_alive()
-
-    #     if is_running_flag and is_thread_alive:
-    #         # Bot corriendo: Desactivar Iniciar, Activar Detener
-    #         self.start_button.config(state=tk.DISABLED, bootstyle="secondary")
-    #         self.stop_button.config(state=tk.NORMAL, bootstyle="danger")
-    #     else:
-    #         # Bot detenido o hilo muerto: Activar Iniciar, Desactivar Detener
-    #         self.start_button.config(state=tk.NORMAL, bootstyle="success")
-    #         self.stop_button.config(
-    #             state=tk.DISABLED, bootstyle="danger-outline")
-
-    #     # Reprogramar la verificación cada 100ms para alta respuesta
-    #     self.master.after(100, self.check_bot_status)
-
-    def start_bot(self):   
+    def start_bot(self):
         # Verificar si el hilo YA existe Y está vivo
         is_thread_alive = self.bot_thread and self.bot_thread.is_alive()
-        
+
         if is_thread_alive:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ Advertencia: El bot ya está en proceso de ejecución. Espere.")
+            print(
+                f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ Advertencia: El bot ya está en proceso de ejecución. Espere.")
             return
-        
+
         # Si la bandera está en True pero el hilo está muerto (estado inconsistente), la reseteamos
         if get_running_status() and not is_thread_alive:
             set_running_status(False)
 
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 Iniciando el proceso de publicación...")
+        print(
+            f"[{datetime.now().strftime('%H:%M:%S')}] 🚀 Iniciando el proceso de publicación...")
         set_running_status(True)
-        
+
         self.update_button_states()
-        
+
         self.bot_thread = threading.Thread(
             target=run_posting_threads, daemon=True)
         self.bot_thread.start()
 
-        # 🟢 MODIFICACIÓN CLAVE: Iniciar el sistema de sondeo de la GUI (POLLING) 
+        # 🟢 MODIFICACIÓN CLAVE: Iniciar el sistema de sondeo de la GUI (POLLING)
         # Esto reemplaza self.check_bot_status() y fuerza el refresco de la tabla.
-        self.check_bot_status_and_update_gui() 
-    
+        self.check_bot_status_and_update_gui()
+
     def stop_bot(self):
         """Detiene el bot enviando la señal y actualizando la UI."""
-        
+
         # 🟢 CORRECCIÓN 3: Prevenir AttributeError y advertir si no hay nada que detener
         if self.bot_thread is None or not get_running_status():
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️ El bot no está en funcionamiento.")
+            print(
+                f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️ El bot no está en funcionamiento.")
             return
 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 Solicitando la detención del bot. Esperando que los hilos finalicen...")
         set_running_status(False)  # Envía la señal de detención al core
-        
+
         # El mensaje de "Bot detenido exitosamente" se emitirá ahora en check_bot_status
         # cuando el thread.is_alive() se vuelva False.
 
@@ -835,11 +1222,11 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         self.check_bot_status()
 
     def check_bot_status(self):
-             
+
         # 1. Obtener el estado real del hilo
         # Esto es True si el hilo existe y está ejecutando código
         thread_is_alive = self.bot_thread and self.bot_thread.is_alive()
-        
+
         # 2. Obtener el estado de la bandera (la señal de stop enviada)
         is_running_flag = get_running_status()
 
@@ -850,19 +1237,21 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
             self.stop_button.config(state=tk.NORMAL, bootstyle="danger")
 
             if not is_running_flag:
-                 # Si el hilo está vivo PERO la bandera es False, significa que se presionó STOP
-                 self.stop_button.config(text="⏳ Deteniendo...") 
-                 
+                # Si el hilo está vivo PERO la bandera es False, significa que se presionó STOP
+                self.stop_button.config(text="⏳ Deteniendo...")
+
         else:
             # El proceso está MUERTO. El bot está realmente detenido.
             self.start_button.config(state=tk.NORMAL, bootstyle="success")
-            self.stop_button.config(state=tk.DISABLED, bootstyle="danger-outline", text="⏹️ Detener Bot")
-            
+            self.stop_button.config(
+                state=tk.DISABLED, bootstyle="danger-outline", text="⏹️ Detener Bot")
+
             # Si la bandera global era True y el thread ya murió, la reseteamos por seguridad
             if is_running_flag:
-                 set_running_status(False)
-                 print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Bot Detenido Exitosamente (El hilo principal terminó).")
-            
+                set_running_status(False)
+                print(
+                    f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Bot Detenido Exitosamente (El hilo principal terminó).")
+
             # Resetear la referencia al hilo una vez que ha muerto
             self.bot_thread = None
 
@@ -901,17 +1290,19 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
             # Usar diferentes intervalos según si el bot está corriendo
             refresh_interval = 2000 if get_running_status() else 5000  # 2s vs 5s
-            
+
             # Actualizar status con información del refresh automático
             bot_status = "🤖 Bot activo" if get_running_status() else "😴 Bot inactivo"
-            self.status_label.config(text=f"{bot_status} - Pestaña: {current_tab_name} - Refresh: {refresh_interval//1000}s")
-            
+            self.status_label.config(
+                text=f"{bot_status} - Pestaña: {current_tab_name} - Refresh: {refresh_interval//1000}s")
+
         except Exception as e:
             print(f"[ERROR] Error en periodic_refresh: {e}")
             refresh_interval = 5000  # Fallback a 5 segundos
 
         # Reprogramar el refresco
-        self.periodic_refresh_id = self.master.after(refresh_interval, self.periodic_refresh)
+        self.periodic_refresh_id = self.master.after(
+            refresh_interval, self.periodic_refresh)
 
     def on_closing(self):
         """Maneja el cierre de la ventana, asegurando la detención del bot."""
@@ -945,8 +1336,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         # 💡 PASO 1: GUARDAR SELECCIÓN ACTUAL
         # Guarda los iids (que son los nombres de las cuentas) de los ítems seleccionados.
         selected_iids = self.account_tree.selection()
-        
-        # 1. Limpiar la tabla existente 
+
+        # 1. Limpiar la tabla existente
         for i in self.account_tree.get_children():
             self.account_tree.delete(i)
 
@@ -959,10 +1350,11 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         # 4. Insertar cada cuenta en la tabla
         for cuenta in cuentas:
             if not isinstance(cuenta, dict):
-            # Imprimir una advertencia y saltar el elemento incorrecto
-                print(f"Advertencia: Se saltó un elemento de cuenta no válido (no es un diccionario): {cuenta}")
-                continue # Pasa al siguiente elemento del bucle
-            
+                # Imprimir una advertencia y saltar el elemento incorrecto
+                print(
+                    f"Advertencia: Se saltó un elemento de cuenta no válido (no es un diccionario): {cuenta}")
+                continue  # Pasa al siguiente elemento del bucle
+
             nombre = cuenta.get('nombre', 'N/A')
             grupo = cuenta.get('grupo', 'N/A')
             proxy = cuenta.get('proxy', 'N/A')
@@ -971,7 +1363,7 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
             # Formato visual para la columna 'Usar'
             usar_display = "✅" if enabled else "❌"
-            
+
             # Etiquetas de color para el estado visual
             tags = ()
             if estado == 'bloqueo':
@@ -983,36 +1375,37 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
             # Insertar la fila en el Treeview, usando el nombre como iid
             self.account_tree.insert('', tk.END, iid=nombre, values=(
-                usar_display, nombre, grupo, proxy, estado 
+                usar_display, nombre, grupo, proxy, estado
             ), tags=tags)
 
         # 💡 PASO 2: RESTAURAR SELECCIÓN
         # Re-selecciona los ítems que estaban seleccionados antes del refresh.
         # Solo re-selecciona si el iid (nombre de cuenta) existe en la tabla.
         existing_iids = self.account_tree.get_children()
-        iids_to_restore = [iid for iid in selected_iids if iid in existing_iids]
-        
+        iids_to_restore = [
+            iid for iid in selected_iids if iid in existing_iids]
+
         if iids_to_restore:
             self.account_tree.selection_set(iids_to_restore)
             # Opcional: Asegurarse de que el primer elemento seleccionado sea visible
             if iids_to_restore:
-                 self.account_tree.see(iids_to_restore[0])
+                self.account_tree.see(iids_to_restore[0])
 
         # 5. Configuración de estilos/tags para la tabla
         self.account_tree.tag_configure('blocked', foreground='red')
         # ... (Mantener el resto de la configuración de tags) ...
-        self.account_tree.tag_configure('disabled', foreground='gray') 
+        self.account_tree.tag_configure('disabled', foreground='gray')
 
         # 6. Actualizar la tabla de cuarentena (si se incluye)
         self.update_quarantine_tree()
 
     def update_quarantine_tree(self):
-    
+
         for i in self.quarantine_tree.get_children():
             self.quarantine_tree.delete(i)
 
         all_accounts = load_accounts_data()
-        
+
         # CORRECCIÓN: Incluir ambos formatos (inglés y español)
         quarantined_accounts = [
             acc for acc in all_accounts
@@ -1024,28 +1417,32 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
 
         # print(f"🔍 Diagnóstico Cuarentena: {len(all_accounts)} cuentas totales")
         # print(f"🔍 Cuentas en cuarentena encontradas: {len(quarantined_accounts)}")
-        
+
         if not quarantined_accounts:
             self.quarantine_tree.insert('', tk.END, values=(
                 '', 'No hay cuentas en Cuarentena/Bloqueo. ¡Todo en orden! 🟢', ''), tags=('ok_quarantine',))
-            self.quarantine_tree.tag_configure('ok_quarantine', foreground='green')
+            self.quarantine_tree.tag_configure(
+                'ok_quarantine', foreground='green')
             return
 
         for account in quarantined_accounts:
             nombre = account.get('nombre', 'N/A')
             estado = account.get('estado', 'N/A')
-            
+
             # CORRECCIÓN: Manejar ambos formatos
             if estado in ['quarantine', 'cuarentena']:
-                razon = account.get('quarantine_reason', 'Proxy Crítico - Razón no especificada')
+                razon = account.get('quarantine_reason',
+                                    'Proxy Crítico - Razón no especificada')
                 tag = 'quarantine'
                 estado_display = 'CUARENTENA'
             elif estado == 'require_login':
-                razon = account.get('block_reason', 'Bloqueo/Require Login - Razón no especificada')
+                razon = account.get(
+                    'block_reason', 'Bloqueo/Require Login - Razón no especificada')
                 tag = 'login_block'
                 estado_display = 'REQUIRE_LOGIN'
             elif estado == 'bloqueo':
-                razon = account.get('block_reason', 'Bloqueo - Razón no especificada')
+                razon = account.get(
+                    'block_reason', 'Bloqueo - Razón no especificada')
                 tag = 'login_block'
                 estado_display = 'BLOQUEO'
             else:
@@ -1055,7 +1452,8 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
             self.quarantine_tree.insert('', tk.END, values=(
                 nombre, estado_display, razon), tags=(tag,), iid=nombre)
 
-        self.quarantine_tree.tag_configure('quarantine', foreground='darkorange')
+        self.quarantine_tree.tag_configure(
+            'quarantine', foreground='darkorange')
         self.quarantine_tree.tag_configure('login_block', foreground='red')
 
     def restore_selected_quarantined(self):
@@ -1719,14 +2117,14 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         # Delay
         delay_frame = ttb.Frame(dialog_frame)
         delay_frame.pack(pady=10, fill="x", anchor="w")
-        
+
         if DELAY_CONFIG["use_individual_delays"]:
             info_text = "💡 Los delays individuales están HABILITADOS - Este post usará sus delays específicos"
         else:
             info_text = "💡 Los delays individuales están DESHABILITADOS - Este post usará el delay general"
-    
+
         ttb.Label(
-            delay_frame, 
+            delay_frame,
             text=info_text,
             bootstyle="info",
             font=("Arial", 8)
@@ -1966,17 +2364,18 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         # 1. Limpiar tabla (CRUCIAL para reflejar el estado actual sin duplicados)
         for i in self.fallos_tree.get_children():
             self.fallos_tree.delete(i)
-            
+
         # 2. Cargar datos
-        fallos = load_fallos_data() 
-        
+        fallos = load_fallos_data()
+
         # 3. Insertar nuevos fallos
         for fallo in fallos:
             error_msg = fallo.get('error_msg', 'Error Desconocido')
-            
+
             # Limitar el mensaje para que quepa bien en la columna
-            display_error_msg = error_msg[:120] + ('...' if len(error_msg) > 120 else '')
-            
+            display_error_msg = error_msg[:120] + \
+                ('...' if len(error_msg) > 120 else '')
+
             self.fallos_tree.insert('', tk.END, values=(
                 fallo.get('timestamp', 'N/A'),
                 fallo.get('nombre', 'N/A'),
@@ -2007,13 +2406,12 @@ class PosterApp(ttb.Frame): # Se añade herencia de ttb.Frame para un uso más l
         # Alternar la dirección de orden
         tree.heading(col, command=lambda:
                      self.sort_treeview(tree, col, not reverse))
-
-
 # --------------------------------------------------------------------------------------
 # Este bloque de funciones (cargar_cuentas, guardar_cuentas, _update_account_state)
 # debería estar en core_poster.py o una utilidad compartida. Se mantiene aquí para
 # asegurar que la GUI funcione si no está en core_poster, pero se recomienda moverlo.
 # --------------------------------------------------------------------------------------
+
 
 def cargar_cuentas():
     """Carga y retorna los datos de cuentas.json."""
